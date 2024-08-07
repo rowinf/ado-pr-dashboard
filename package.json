@@ -1,5 +1,6 @@
 {
   "name": "hono-htmx",
+  "type": "module",
   "scripts": {
     "dev": "bun run --hot src/index.tsx"
   },
