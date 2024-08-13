@@ -5,6 +5,9 @@
     "jsxImportSource": "hono/jsx",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   }
 }
