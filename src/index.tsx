@@ -21,11 +21,19 @@ const NestedValue: FC<{ label: string; value: unknown }> = ({
   value,
 }) => {
   if (Array.isArray(value)) {
-    if (value.length === 0) return <li>{label}: (empty)</li>
-    return <li>{label}: <NestedValueList obj={value} /></li>;
+    if (value.length === 0) return <li>{label}: (empty)</li>;
+    return (
+      <li>
+        {label}: <NestedValueList obj={value} />
+      </li>
+    );
   }
   if (typeof value === "object" && value !== null)
-    return <li>{label}: <NestedValueList obj={value} /></li>;
+    return (
+      <li>
+        {label}: <NestedValueList obj={value} />
+      </li>
+    );
   return (
     <li>
       {label}: {String(value)}
@@ -66,7 +74,12 @@ const PullRequests: FC<{ pullRequests: typeof PullRequestData }> = ({
             </tr>
             <tr>
               <td>Business Hours</td>
-              <td>{getBusinessHours(new Date(pr.creationDate), new Date(pr.closedDate))}</td>
+              <td>
+                {getBusinessHours(
+                  new Date(pr.creationDate),
+                  new Date(pr.closedDate)
+                )}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -94,15 +107,14 @@ const Top: FC<{ pullRequests: typeof PullRequestData }> = (props) => {
   );
 };
 
+const file = Bun.file("data/raw.json");
+const json: typeof PullRequestData = await file.json();
+
 app.get("/", async (c) => {
-  const file = Bun.file("data/raw.json");
-  const json = await file.json();
   return c.html(<Top pullRequests={json} />);
 });
 
 app.get("/prs", async (c) => {
-  const file = Bun.file("data/raw.json");
-  const json: typeof PullRequestData = await file.json();
   return c.html(<PullRequests pullRequests={json} />);
 });
 
