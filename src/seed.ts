@@ -2,6 +2,7 @@ import { $ } from "bun";
 import { Database } from "bun:sqlite";
 
 import PullRequestData from "../data/raw.json";
+import { calculateWorkingHours } from "./workingHoursBetweenDates.ts";
 
 /**
  * STEP ZERO:\n
@@ -9,15 +10,13 @@ import PullRequestData from "../data/raw.json";
  * $ `az login --allow-no-subscriptions`\n
  */
 
-$.env({ AZURE_DEVOPS_EXT_PAT: Bun.env.AZURE_DEVOPS_EXT_PAT });
-
-
-const file = Bun.file("raw.json");
-let pullRequests: typeof PullRequestData = await file.json();
-
+// $.env({ AZURE_DEVOPS_EXT_PAT: Bun.env.AZURE_DEVOPS_EXT_PAT });
 // const tnumber = "t979140";
 // let prs = await $`az repos pr list --status completed --creator ${tnumber} > raw.json`;
 // console.log(prs[0])
+
+const file = Bun.file("data/raw.json");
+let pullRequests: typeof PullRequestData = await file.json();
 
 const db = new Database("hono-htmx.sqlite3");
 db.run(`CREATE TABLE IF NOT EXISTS pull_requests(
@@ -30,7 +29,8 @@ db.run(`CREATE TABLE IF NOT EXISTS pull_requests(
     title TEXT,
     createdBy_displayName TEXT,
     createdBy_uniqueName TEXT,
-    createdBy_imageUrl TEXT
+    createdBy_imageUrl TEXT,
+    calculated_businessDuration NUMERIC
 );`);
 
 db.run(`CREATE TABLE IF NOT EXISTS reviewers(
@@ -69,8 +69,9 @@ let insertPullRequests = db.prepare(`INSERT INTO pull_requests (
     createdBy_displayName,
     createdBy_uniqueName,
     createdBy_imageUrl,
-    status
-) VALUES ($pullRequestId, $mergeStatus, $repository_name, $closedDate, $creationDate, $title, $createdBy_displayName, $createdBy_uniqueName, $createdBy_imageUrl, $status);`);
+    status,
+    calculated_businessDuration
+) VALUES ($pullRequestId, $mergeStatus, $repository_name, $closedDate, $creationDate, $title, $createdBy_displayName, $createdBy_uniqueName, $createdBy_imageUrl, $status, $calculated_businessDuration);`);
 
 const count = db.transaction((prs: typeof PullRequestData) => {
   let count = 0;
@@ -86,6 +87,7 @@ const count = db.transaction((prs: typeof PullRequestData) => {
       $createdBy_uniqueName: pr.createdBy.uniqueName,
       $createdBy_imageUrl: pr.createdBy.imageUrl,
       $repository_name: pr.repository.name,
+      $calculated_businessDuration: calculateWorkingHours(pr.creationDate, pr.closedDate),
     }))
     .forEach((pr) => {
       insertPullRequests.run(pr);
@@ -96,10 +98,7 @@ const count = db.transaction((prs: typeof PullRequestData) => {
       return pr.reviewers;
     })
     .flat();
-  let uniqueReviewers = new Map<
-    string,
-    (typeof PullRequestData)[0]["reviewers"][0]
-  >();
+  let uniqueReviewers = new Map<string, (typeof PullRequestData)[0]["reviewers"][0]>();
   flatReviewers.forEach((rev) => {
     uniqueReviewers.set(rev.id, rev);
   });
