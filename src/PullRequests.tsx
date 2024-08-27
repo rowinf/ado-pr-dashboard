@@ -7,7 +7,21 @@ export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
         <title>User Pull Requests</title>
         <link rel="stylesheet" href="/static/missing.css"></link>
       </head>
-      <body>
+      <body class="sidebar-layout">
+        <header>
+          <div class="<h2>">PR Dashboard</div>
+          <ul role="list">
+            <li>
+              <a href="/">Home</a>
+            </li>
+            <li>
+              <a href="/pullrequests">Pull Requests</a>
+            </li>
+            <li>
+              <a href="/reviews">Reviews</a>
+            </li>
+          </ul>
+        </header>
         <main class={props.class}>{props.children}</main>
       </body>
     </html>
