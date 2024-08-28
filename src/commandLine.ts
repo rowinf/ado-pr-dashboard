@@ -13,7 +13,7 @@ const getPullRequests = async (tnumber: string) => {
 
   const file = Bun.file("data/raw.json");
   if (!(await file.exists())) {
-    await $`az repos pr list --status completed --creator ${tnumber} > data/raw.json`;
+    await $`az repos pr list --creator ${tnumber} > data/raw.json`;
   }
   pullRequests = (await file.json()) as any[];
   // console.log(prs[0])

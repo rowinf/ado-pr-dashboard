@@ -1,0 +1,8 @@
+
+main {
+  max-inline-size: var(--full-width);
+}
+
+.sidebar-layout {
+  gap: var(--gap);
+}

@@ -9,14 +9,15 @@ import { calculateWorkingHours } from "./workingHoursBetweenDates.ts";
  * Get the azure cli with devops extension and run this in the command line:\n
  * $ `az login --allow-no-subscriptions`\n
  */
+$.env({ AZURE_DEVOPS_EXT_PAT: Bun.env.AZURE_DEVOPS_EXT_PAT });
+const tnumber = "t979140";
+await $`az repos pr list --creator ${tnumber} > data/active.json`;
+await $`az repos pr list --status completed --creator ${tnumber} > data/completed.json`;
 
-// $.env({ AZURE_DEVOPS_EXT_PAT: Bun.env.AZURE_DEVOPS_EXT_PAT });
-// const tnumber = "t979140";
-// let prs = await $`az repos pr list --status completed --creator ${tnumber} > raw.json`;
-// console.log(prs[0])
-
-const file = Bun.file("data/raw.json");
-let pullRequests: typeof PullRequestData = await file.json();
+let pullRequests: typeof PullRequestData = [
+  ...(await Bun.file("data/active.json").json()),
+  ...(await Bun.file("data/completed.json").json()),
+];
 
 const db = new Database("hono-htmx.sqlite3");
 db.run(`CREATE TABLE IF NOT EXISTS pull_requests(
@@ -40,7 +41,7 @@ db.run(`CREATE TABLE IF NOT EXISTS reviewers(
     uniqueName TEXT
 )`);
 
-let insertReviewers = db.prepare(`INSERT INTO reviewers (
+let insertReviewers = db.prepare(`INSERT OR IGNORE INTO reviewers (
     id,
     displayName,
     imageUrl,
@@ -52,6 +53,7 @@ db.run(`CREATE TABLE IF NOT EXISTS code_reviews(
     reviewerId TEXT,
     FOREIGN KEY(pullRequestId) REFERENCES pull_requests(pullRequestId),
     FOREIGN KEY(reviewerId) REFERENCES reviewers(id)
+    UNIQUE(pullRequestId, reviewerId)
 )`);
 
 let insertCodeReviews = db.prepare(`INSERT INTO code_reviews (
@@ -59,7 +61,7 @@ let insertCodeReviews = db.prepare(`INSERT INTO code_reviews (
     reviewerId
 ) VALUES ($pullRequestId, $reviewerId)`);
 
-let insertPullRequests = db.prepare(`INSERT INTO pull_requests (
+let insertPullRequests = db.prepare(`INSERT OR REPLACE INTO pull_requests (
     pullRequestId,
     mergeStatus,
     repository_name,
@@ -87,29 +89,27 @@ const count = db.transaction((prs: typeof PullRequestData) => {
       $createdBy_uniqueName: pr.createdBy.uniqueName,
       $createdBy_imageUrl: pr.createdBy.imageUrl,
       $repository_name: pr.repository.name,
-      $calculated_businessDuration: calculateWorkingHours(pr.creationDate, pr.closedDate),
+      $calculated_businessDuration: calculateWorkingHours(
+        pr.creationDate,
+        pr.closedDate
+      ),
     }))
     .forEach((pr) => {
       insertPullRequests.run(pr);
       count += 1;
     });
-  let flatReviewers = prs
-    .map((pr) => {
+  prs
+    .flatMap((pr) => {
       return pr.reviewers;
     })
-    .flat();
-  let uniqueReviewers = new Map<string, (typeof PullRequestData)[0]["reviewers"][0]>();
-  flatReviewers.forEach((rev) => {
-    uniqueReviewers.set(rev.id, rev);
-  });
-  for (let val of uniqueReviewers.values()) {
-    insertReviewers.run({
-      $id: val.id,
-      $displayName: val.displayName,
-      $imageUrl: val.imageUrl,
-      $uniqueName: val.uniqueName,
+    .forEach((reviewer) => {
+      insertReviewers.run({
+        $id: reviewer.id,
+        $displayName: reviewer.displayName,
+        $imageUrl: reviewer.imageUrl,
+        $uniqueName: reviewer.uniqueName,
+      });
     });
-  }
   prs.forEach((pr) => {
     pr.reviewers.forEach((rev) => {
       insertCodeReviews.run({

@@ -33,21 +33,24 @@ const Home = () => (
 const app = new Hono();
 
 const selectPullRequests = db.query(`
-    SELECT
-      status,
-     	pullRequestId,
-     	title,
-      createdBy_uniqueName,
-     	datetime(creationDate, 'localtime') as creationDate,
-     	datetime(closedDate, 'localtime') as closedDate,
-     	(SELECT substr(timediff(closedDate, creationDate), 10, 2)) AS daysPassed,
-     	(SELECT substr(timediff(closedDate, creationDate), 13, 2)) AS hoursPassed,
-     	(SELECT substr(timediff(closedDate, creationDate), 16, 2)) AS minutesPassed,
-     	calculated_businessDuration
-    FROM pull_requests
-    WHERE status='completed'
-    ORDER BY calculated_businessDuration DESC
-    LIMIT $count;
+SELECT
+  status,
+  pr.pullRequestId,
+  title,
+  createdBy_uniqueName,
+  datetime(creationDate, 'localtime') as creationDate,
+  datetime(closedDate, 'localtime') as closedDate,
+  (SELECT substr(timediff(closedDate, creationDate), 10, 2)) AS daysPassed,
+  (SELECT substr(timediff(closedDate, creationDate), 13, 2)) AS hoursPassed,
+  (SELECT substr(timediff(closedDate, creationDate), 16, 2)) AS minutesPassed,
+  calculated_businessDuration,
+  COUNT(cr.reviewerId) as reviewsCount
+FROM pull_requests as pr
+JOIN code_reviews as cr ON pr.pullRequestId = cr.pullRequestId
+WHERE status=$status
+GROUP BY pr.pullRequestId
+ORDER BY calculated_businessDuration DESC
+LIMIT $limit;
 `);
 
 const selectReviews = db.query(`
@@ -58,8 +61,10 @@ const selectReviews = db.query(`
 	GROUP BY r.displayName
 	ORDER BY reviews DESC;
 `);
+
 app
   .use("/favicon.ico", serveStatic({ path: "./favicon.ico" }))
+  .use("/static/style.css", serveStatic({ path: "./public/style.css" }))
   .use(
     "/static/missing.css",
     serveStatic({ path: "./node_modules/missing.css/dist/missing.css" })
@@ -72,8 +77,16 @@ app
     return c.html(<Home />);
   })
   .get("/pullrequests", async (c) => {
-    const json = selectPullRequests.all({ $count: 15 });
-    return c.html(<PullRequests pullRequests={json} />);
+    const query = new Map();
+    const params = ["tnumber", "status", "mute_noise"];
+    params.forEach((q) => {
+      query.set(q, c.req.query(q));
+    });
+    const json = selectPullRequests.all({
+      $limit: 100,
+      $status: query.get('status'),
+    });
+    return c.html(<PullRequests pullRequests={json} query={query} />);
   })
   .get("/reviews", async (c) => {
     const json = selectReviews.all();

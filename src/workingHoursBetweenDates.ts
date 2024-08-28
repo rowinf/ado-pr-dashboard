@@ -5,7 +5,7 @@ export function workingHoursBetweenDates(
   endDate: Date,
   dayStart = 9,
   dayEnd = 18,
-  includeWeekends = false,
+  includeWeekends = false
 ): string {
   // Store minutes worked
   var minutesWorked = 0;
@@ -32,7 +32,9 @@ export function workingHoursBetweenDates(
     if (
       currentTime >= workHoursStart &&
       currentTime < workHoursEnd &&
-      (includeWeekends ? current.getDay() !== 0 && current.getDay() !== 6 : true)
+      (includeWeekends
+        ? current.getDay() !== 0 && current.getDay() !== 6
+        : true)
     ) {
       minutesWorked++;
     }
@@ -45,9 +47,14 @@ export function workingHoursBetweenDates(
   return (minutesWorked / 60).toFixed(2);
 }
 
-export const calculateWorkingHours = (startDate?: string, endDate?: string) => {
+export const calculateWorkingHours = (
+  startDate?: string,
+  endDate?: string | null
+) => {
   if (startDate && endDate) {
-    return Number(workingHoursBetweenDates(new Date(startDate), new Date(endDate)));
+    return Number(
+      workingHoursBetweenDates(new Date(startDate), new Date(endDate))
+    );
   }
   return 0;
 };
