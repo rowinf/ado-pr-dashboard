@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { Database } from "bun:sqlite";
 
-import PullRequestData from "../data/raw.json";
+import PullRequestData from "../data/active.json";
 import { calculateWorkingHours } from "./workingHoursBetweenDates.ts";
 
 /**
@@ -10,14 +10,6 @@ import { calculateWorkingHours } from "./workingHoursBetweenDates.ts";
  * $ `az login --allow-no-subscriptions`\n
  */
 $.env({ AZURE_DEVOPS_EXT_PAT: Bun.env.AZURE_DEVOPS_EXT_PAT });
-const tnumber = "t979140";
-await $`az repos pr list --creator ${tnumber} > data/active.json`;
-await $`az repos pr list --status completed --creator ${tnumber} > data/completed.json`;
-
-let pullRequests: typeof PullRequestData = [
-  ...(await Bun.file("data/active.json").json()),
-  ...(await Bun.file("data/completed.json").json()),
-];
 
 const db = new Database("hono-htmx.sqlite3");
 db.run(`CREATE TABLE IF NOT EXISTS pull_requests(
@@ -31,7 +23,8 @@ db.run(`CREATE TABLE IF NOT EXISTS pull_requests(
     createdBy_displayName TEXT,
     createdBy_uniqueName TEXT,
     createdBy_imageUrl TEXT,
-    calculated_businessDuration NUMERIC
+    calculated_businessDuration NUMERIC,
+    sourceRefName TEXT
 );`);
 
 db.run(`CREATE TABLE IF NOT EXISTS reviewers(
@@ -41,20 +34,20 @@ db.run(`CREATE TABLE IF NOT EXISTS reviewers(
     uniqueName TEXT
 )`);
 
+db.run(`CREATE TABLE IF NOT EXISTS code_reviews(
+  pullRequestId TEXT,
+  reviewerId TEXT,
+  FOREIGN KEY(pullRequestId) REFERENCES pull_requests(pullRequestId),
+  FOREIGN KEY(reviewerId) REFERENCES reviewers(id)
+  UNIQUE(pullRequestId, reviewerId)
+)`);
+
 let insertReviewers = db.prepare(`INSERT OR IGNORE INTO reviewers (
     id,
     displayName,
     imageUrl,
     uniqueName
 ) VALUES ($id, $displayName, $imageUrl, $uniqueName)`);
-
-db.run(`CREATE TABLE IF NOT EXISTS code_reviews(
-    pullRequestId TEXT,
-    reviewerId TEXT,
-    FOREIGN KEY(pullRequestId) REFERENCES pull_requests(pullRequestId),
-    FOREIGN KEY(reviewerId) REFERENCES reviewers(id)
-    UNIQUE(pullRequestId, reviewerId)
-)`);
 
 let insertCodeReviews = db.prepare(`INSERT INTO code_reviews (
     pullRequestId,
@@ -72,12 +65,13 @@ let insertPullRequests = db.prepare(`INSERT OR REPLACE INTO pull_requests (
     createdBy_uniqueName,
     createdBy_imageUrl,
     status,
-    calculated_businessDuration
-) VALUES ($pullRequestId, $mergeStatus, $repository_name, $closedDate, $creationDate, $title, $createdBy_displayName, $createdBy_uniqueName, $createdBy_imageUrl, $status, $calculated_businessDuration);`);
+    calculated_businessDuration,
+    sourceRefName
+) VALUES ($pullRequestId, $mergeStatus, $repository_name, $closedDate, $creationDate, $title, $createdBy_displayName, $createdBy_uniqueName, $createdBy_imageUrl, $status, $calculated_businessDuration, $sourceRefName);`);
 
-const count = db.transaction((prs: typeof PullRequestData) => {
+const insertData = db.transaction((prs: typeof PullRequestData) => {
   let count = 0;
-  pullRequests
+  prs
     .map((pr) => ({
       $pullRequestId: pr.pullRequestId,
       $mergeStatus: pr.mergeStatus,
@@ -93,6 +87,7 @@ const count = db.transaction((prs: typeof PullRequestData) => {
         pr.creationDate,
         pr.closedDate
       ),
+      $sourceRefName: pr.sourceRefName,
     }))
     .forEach((pr) => {
       insertPullRequests.run(pr);
@@ -119,6 +114,28 @@ const count = db.transaction((prs: typeof PullRequestData) => {
     });
   });
   return count;
-})(pullRequests);
+});
 
-console.log(`${count} pull requests were processed`);
+const tnumbers = ["t979140"];
+
+tnumbers.forEach(async (tnumber) => {
+  console.log("fetching active PRs");
+  let active = [];
+  let completed = [];
+  // try {
+  //   active = await $`az repos pr list --creator ${tnumber}`.json();
+  // } catch (e) {
+  //   console.error("couldnt fetch active PRs", e);
+  // }
+  // console.log("fetching completed PRs");
+  try {
+    completed =
+      await $`az repos pr list --status {completed,active} --creator ${tnumber}`.json();
+  } catch (e) {
+    console.error("couldnt fetch completed PRs", e);
+  }
+
+  const pullRequests: typeof PullRequestData = [...active, ...completed];
+  const count = await insertData(pullRequests);
+  console.log(`${count} pull requests were processed`);
+});

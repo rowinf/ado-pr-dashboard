@@ -8,6 +8,7 @@ const Reviews = ({ reviews }) => {
         <thead>
           <tr>
             <th>Name</th>
+            <th>T-Number</th>
             <th>PR</th>
             <th>Title</th>
             <th>Count</th>
@@ -17,6 +18,7 @@ const Reviews = ({ reviews }) => {
           {reviews.map((review) => (
             <tr>
               <td>{review.displayName}</td>
+              <td>{review.tnumber}</td>
               <td>{review.pullRequestId}</td>
               <td>{review.title}</td>
               <td>{review.reviews}</td>

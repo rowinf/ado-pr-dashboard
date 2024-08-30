@@ -6,3 +6,7 @@ main {
 .sidebar-layout {
   gap: var(--gap);
 }
+
+.htmx-settling {
+  border-color: greenyellow!important;
+}

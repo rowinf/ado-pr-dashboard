@@ -44,22 +44,26 @@ SELECT
   (SELECT substr(timediff(closedDate, creationDate), 13, 2)) AS hoursPassed,
   (SELECT substr(timediff(closedDate, creationDate), 16, 2)) AS minutesPassed,
   calculated_businessDuration,
-  COUNT(cr.reviewerId) as reviewsCount
+  COUNT(cr.reviewerId) as reviewsCount,
+  repository_name,
+  substr(sourceRefName, 12) as branch
 FROM pull_requests as pr
 JOIN code_reviews as cr ON pr.pullRequestId = cr.pullRequestId
-WHERE status=$status
+WHERE status = $status AND (sourceRefName LIKE $sourceRefName) AND NOT (title LIKE $bump)
 GROUP BY pr.pullRequestId
 ORDER BY calculated_businessDuration DESC
 LIMIT $limit;
 `);
 
 const selectReviews = db.query(`
-  SELECT r.displayName, cr.pullRequestId, pr.title, pr.repository_name, COUNT(r.displayName) as reviews
-  FROM reviewers as r
-	JOIN code_reviews as cr ON r.id = cr.reviewerId
-	JOIN pull_requests as pr ON cr.pullRequestId = pr.pullRequestId
-	GROUP BY r.displayName
-	ORDER BY reviews DESC;
+SELECT r.displayName, cr.pullRequestId, pr.title, pr.repository_name, 
+  COUNT(r.displayName) as reviews, 
+  substr(r.uniqueName, 0, instr(r.uniqueName, '@')) as tnumber
+FROM reviewers as r
+JOIN code_reviews as cr ON r.id = cr.reviewerId
+JOIN pull_requests as pr ON cr.pullRequestId = pr.pullRequestId
+GROUP BY r.displayName
+ORDER BY reviews DESC;
 `);
 
 app
@@ -77,14 +81,12 @@ app
     return c.html(<Home />);
   })
   .get("/pullrequests", async (c) => {
-    const query = new Map();
-    const params = ["tnumber", "status", "mute_noise"];
-    params.forEach((q) => {
-      query.set(q, c.req.query(q));
-    });
+    const query = c.req.query();
     const json = selectPullRequests.all({
-      $limit: 100,
-      $status: query.get('status'),
+      $limit: 105,
+      $status: query.status || "completed",
+      $bump: query.mute_noise === "on" ? "%bump%" : "",
+      $sourceRefName: query.mute_noise === "on" ? `%${query.tnumber}%` : "%%",
     });
     return c.html(<PullRequests pullRequests={json} query={query} />);
   })

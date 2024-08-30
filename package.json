@@ -9,6 +9,7 @@
   "dependencies": {
     "dayjs": "^1.11.12",
     "hono": "^4.5.4",
+    "htmx.org": "^1.9.12",
     "missing.css": "^1.1.2"
   },
   "devDependencies": {

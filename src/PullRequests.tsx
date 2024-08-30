@@ -7,8 +7,9 @@ export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
         <title>User Pull Requests</title>
         <link rel="stylesheet" href="/static/missing.css"></link>
         <link rel="stylesheet" href="/static/style.css"></link>
+        <script src="/static/htmx.js"></script>
       </head>
-      <body class="sidebar-layout">
+      <body class="sidebar-layout" hx-boost="true">
         <header>
           <div class="<h2>">PR Dashboard</div>
           <ul role="list">
@@ -31,7 +32,7 @@ export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
 
 const PullRequests: FC<{
   pullRequests: Array<unknown>;
-  query: Map<string, string>;
+  query: Record<string, string>;
 }> = ({ pullRequests, query }) => (
   <Top>
     <h1>Pull Requests</h1>
@@ -39,7 +40,15 @@ const PullRequests: FC<{
       <p>{pullRequests[0]?.createdBy_uniqueName}</p>
     </div>
     <div>
-      <form method="GET" action="/pullrequests">
+      <form
+        method="GET"
+        action="/pullrequests"
+        hx-get="/pullrequests"
+        hx-trigger="submit"
+        hx-select="table"
+        hx-target="table"
+        hx-swap="outerHTML"
+      >
         <section class="tool-bar margin-block">
           <label>
             T-Number
@@ -47,7 +56,7 @@ const PullRequests: FC<{
               type="text"
               name="tnumber"
               placeholder="t-number"
-              value={query.get("tnumber")}
+              value={query["tnumber"]}
             />
           </label>
           <label>
@@ -56,23 +65,17 @@ const PullRequests: FC<{
               type="checkbox"
               id="mute_noise"
               name="mute_noise"
-              checked={query.get("mute_noise") === "on"}
+              checked={query["mute_noise"] === "on"}
             />
           </label>
           <label id="status">
             Status
             <select type="checkbox" name="status">
               <option value="">-------- Status --------</option>
-              <option
-                value="active"
-                selected={query.get("status") === "active"}
-              >
+              <option value="active" selected={query.status === "active"}>
                 Active
               </option>
-              <option
-                value="completed"
-                selected={query.get("status") === "completed"}
-              >
+              <option value="completed" selected={query.status === "completed"}>
                 Completed
               </option>
             </select>
@@ -84,29 +87,29 @@ const PullRequests: FC<{
         <thead>
           <tr>
             <th>Title</th>
-            <th>Status</th>
-            <th>Created</th>
             <th>Closed</th>
             <th>
               <abbr title="business hours taken to complete the PR">Hours</abbr>
             </th>
             <th>Reviews</th>
+            <th>repository_name</th>
+            <th>branch</th>
           </tr>
         </thead>
         <tbody>
           {pullRequests.map((pr: unknown) => (
             <tr>
               <td>
-                {pr.title}
+                {pr.status !== "active" ? "✅" : ""} {pr.title}
                 <sup>
                   <abbr title={pr.pullRequestId}>#</abbr>
                 </sup>
               </td>
-              <td>{pr.status}</td>
-              <td>{new Date(pr.creationDate).toDateString()}</td>
               <td>{new Date(pr.closedDate).toDateString()}</td>
               <td>{pr.calculated_businessDuration}</td>
               <td>{pr.reviewsCount}</td>
+              <td>{pr.repository_name}</td>
+              <td>{pr.branch}</td>
             </tr>
           ))}
         </tbody>
