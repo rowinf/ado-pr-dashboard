@@ -1,5 +1,5 @@
 import { FC, PropsWithChildren } from "hono/jsx";
-import { PullRequestsQuery } from "./index.tsx";
+import { PullRequestsQuery } from "./PullRequestsQuery.ts";
 
 export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
   return (

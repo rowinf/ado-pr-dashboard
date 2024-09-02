@@ -1,19 +1,32 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { $ } from "bun";
-import { Database } from "bun:sqlite";
 
-import type { PullRequestData } from "./types.d.ts";
 import { calculateWorkingHours } from "./workingHoursBetweenDates.ts";
+import { db } from "./db.ts";
 
-/**
- * STEP ZERO:\n
- * Get the azure cli with devops extension and run this in the command line:\n
- * $ `az login --allow-no-subscriptions`\n
- */
-$.env({ AZURE_DEVOPS_EXT_PAT: Bun.env.AZURE_DEVOPS_EXT_PAT });
+interface PullRequestData {
+  pullRequestId: number;
+  mergeStatus: string;
+  status: string;
+  closedDate: string;
+  creationDate: string;
+  title: string;
+  createdBy: {
+    displayName: string;
+    uniqueName: string;
+    imageUrl: string;
+    name: string;
+  };
+  repository: { name: string };
+  sourceRefName: string;
+  reviewers: {
+    id: string;
+    displayName: string;
+    imageUrl: string;
+    uniqueName: string;
+  }[];
+}
 
-const db = new Database("hono-htmx.sqlite3");
 db.run(`CREATE TABLE IF NOT EXISTS pull_requests(
     pullRequestId INTEGER PRIMARY KEY,
     mergeStatus TEXT,
@@ -71,7 +84,7 @@ let insertPullRequests = db.prepare(`INSERT OR REPLACE INTO pull_requests (
     sourceRefName
 ) VALUES ($pullRequestId, $mergeStatus, $repository_name, $closedDate, $creationDate, $title, $createdBy_displayName, $createdBy_uniqueName, $createdBy_imageUrl, $status, $calculated_businessDuration, $sourceRefName);`);
 
-const insertData = db.transaction((prs: typeof PullRequestData) => {
+const insertData = db.transaction((prs: PullRequestData[]) => {
   let count = 0;
   prs
     .map((pr) => ({
@@ -123,7 +136,7 @@ const files = await readdir(join(import.meta.dir, "../data"));
 Promise.all(
   files.map(async (file) => {
     const json = await Bun.file(join(import.meta.dir, "../data", file)).json();
-    const awaitable = insertData(json as typeof PullRequestData);
+    const awaitable = insertData(json as PullRequestData);
     total += await awaitable;
     console.log(`progress: ${total} PRs processed`);
     return awaitable;

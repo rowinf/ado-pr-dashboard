@@ -1,13 +1,13 @@
 import { Hono } from "hono";
-import { Database } from "bun:sqlite";
 import { serveStatic } from "hono/bun";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime.js";
 import PullRequests, { Top } from "./PullRequests.tsx";
 import Reviews from "./Reviews.tsx";
+import { getPullRequests } from "./PullRequestsQuery.ts";
+import { getReviews } from "./ReviewsQuery.ts";
 
 dayjs.extend(relativeTime);
-const db = new Database("hono-htmx.sqlite3");
 
 const Home = () => (
   <Top>
@@ -27,69 +27,6 @@ const Home = () => (
 
 const app = new Hono();
 
-export interface PullRequestsQuery {
-  status: string;
-  pullRequestId: number;
-  title: string;
-  createdBy_uniqueName: string;
-  creationDate: string;
-  closedDate: string;
-  branch: string;
-  repository_name: string;
-  reviewsCount: number;
-  calculated_businessDuration: number;
-}
-
-const selectPullRequests = db.query<
-  PullRequestsQuery,
-  {
-    $limit: number;
-    $status: string;
-    $bump: string;
-    $sourceRefName: string;
-  }
->(`
-SELECT
-  status,
-  pr.pullRequestId,
-  title,
-  createdBy_uniqueName,
-  datetime(creationDate, 'localtime') as creationDate,
-  datetime(closedDate, 'localtime') as closedDate,
-  (SELECT substr(timediff(closedDate, creationDate), 10, 2)) AS daysPassed,
-  (SELECT substr(timediff(closedDate, creationDate), 13, 2)) AS hoursPassed,
-  (SELECT substr(timediff(closedDate, creationDate), 16, 2)) AS minutesPassed,
-  calculated_businessDuration,
-  COUNT(cr.reviewerId) as reviewsCount,
-  repository_name,
-  substr(sourceRefName, 12) as branch
-FROM pull_requests as pr
-JOIN code_reviews as cr ON pr.pullRequestId = cr.pullRequestId
-WHERE status = $status AND (sourceRefName LIKE $sourceRefName) AND NOT (title LIKE $bump)
-GROUP BY pr.pullRequestId
-ORDER BY calculated_businessDuration DESC
-LIMIT $limit;
-`);
-
-export interface ReviewsQuery {
-  displayName: string;
-  tnumber: string;
-  pullRequestId: number;
-  title: string;
-  reviews: number;
-}
-
-const selectReviews = db.query<ReviewsQuery, {}>(`
-SELECT r.displayName, cr.pullRequestId, pr.title, pr.repository_name, 
-  COUNT(r.displayName) as reviews, 
-  substr(r.uniqueName, 0, instr(r.uniqueName, '@')) as tnumber
-FROM reviewers as r
-JOIN code_reviews as cr ON r.id = cr.reviewerId
-JOIN pull_requests as pr ON cr.pullRequestId = pr.pullRequestId
-GROUP BY r.displayName
-ORDER BY reviews DESC;
-`);
-
 app
   .use("/favicon.ico", serveStatic({ path: "./favicon.ico" }))
   .use("/static/style.css", serveStatic({ path: "./public/style.css" }))
@@ -106,7 +43,7 @@ app
   })
   .get("/pullrequests", async (c) => {
     const query = c.req.query();
-    const json = selectPullRequests.all({
+    const json = getPullRequests.all({
       $limit: 105,
       $status: query.status || "completed",
       $bump: query.mute_noise === "on" ? "%bump%" : "",
@@ -115,7 +52,7 @@ app
     return c.html(<PullRequests pullRequests={json} query={query} />);
   })
   .get("/reviews", async (c) => {
-    const json = selectReviews.all({});
+    const json = getReviews.all({});
     return c.html(<Reviews reviews={json} />);
   });
 
