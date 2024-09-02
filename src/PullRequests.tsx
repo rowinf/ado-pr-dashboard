@@ -1,4 +1,5 @@
 import { FC, PropsWithChildren } from "hono/jsx";
+import type { PullRequestData } from "./types.d.ts";
 
 export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
   return (
@@ -31,7 +32,7 @@ export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
 };
 
 const PullRequests: FC<{
-  pullRequests: Array<unknown>;
+  pullRequests: PullRequestData;
   query: Record<string, string>;
 }> = ({ pullRequests, query }) => (
   <Top>

@@ -1,7 +1,9 @@
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { $ } from "bun";
 import { Database } from "bun:sqlite";
 
-import PullRequestData from "../data/active.json";
+import type { PullRequestData } from "./types.d.ts";
 import { calculateWorkingHours } from "./workingHoursBetweenDates.ts";
 
 /**
@@ -49,7 +51,7 @@ let insertReviewers = db.prepare(`INSERT OR IGNORE INTO reviewers (
     uniqueName
 ) VALUES ($id, $displayName, $imageUrl, $uniqueName)`);
 
-let insertCodeReviews = db.prepare(`INSERT INTO code_reviews (
+let insertCodeReviews = db.prepare(`INSERT OR IGNORE INTO code_reviews (
     pullRequestId,
     reviewerId
 ) VALUES ($pullRequestId, $reviewerId)`);
@@ -116,26 +118,16 @@ const insertData = db.transaction((prs: typeof PullRequestData) => {
   return count;
 });
 
-const tnumbers = ["t979140"];
-
-tnumbers.forEach(async (tnumber) => {
-  console.log("fetching active PRs");
-  let active = [];
-  let completed = [];
-  // try {
-  //   active = await $`az repos pr list --creator ${tnumber}`.json();
-  // } catch (e) {
-  //   console.error("couldnt fetch active PRs", e);
-  // }
-  // console.log("fetching completed PRs");
-  try {
-    completed =
-      await $`az repos pr list --status {completed,active} --creator ${tnumber}`.json();
-  } catch (e) {
-    console.error("couldnt fetch completed PRs", e);
-  }
-
-  const pullRequests: typeof PullRequestData = [...active, ...completed];
-  const count = await insertData(pullRequests);
-  console.log(`${count} pull requests were processed`);
+let total = 0;
+const files = await readdir(join(import.meta.dir, "../data"));
+Promise.all(
+  files.map(async (file) => {
+    const json = await Bun.file(join(import.meta.dir, "../data", file)).json();
+    const awaitable = insertData(json as typeof PullRequestData);
+    total += await awaitable;
+    console.log(`progress: ${total} PRs processed`);
+    return awaitable;
+  })
+).then(() => {
+  console.log(`complete: ${total} pull requests were processed`);
 });

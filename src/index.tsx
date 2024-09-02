@@ -4,15 +4,11 @@ import { Database } from "bun:sqlite";
 import { serveStatic } from "hono/bun";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime.js";
-import PullRequestData from "../data/raw.json";
 import PullRequests, { Top } from "./PullRequests.tsx";
 import Reviews from "./Reviews.tsx";
 
 dayjs.extend(relativeTime);
 const db = new Database("hono-htmx.sqlite3");
-
-const file = Bun.file("data/raw.json");
-const json: typeof PullRequestData = await file.json();
 
 const Home = () => (
   <Top>
