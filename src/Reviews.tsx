@@ -1,6 +1,8 @@
+import { FC } from "hono/jsx";
+import { ReviewsQuery } from "./index.tsx";
 import { Top } from "./PullRequests.tsx";
 
-const Reviews = ({ reviews }) => {
+const Reviews: FC<{ reviews: ReviewsQuery[] }> = ({ reviews }) => {
   return (
     <Top>
       <h1>Reviews</h1>

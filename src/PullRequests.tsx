@@ -1,5 +1,5 @@
 import { FC, PropsWithChildren } from "hono/jsx";
-import type { PullRequestData } from "./types.d.ts";
+import { PullRequestsQuery } from "./index.tsx";
 
 export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
   return (
@@ -32,7 +32,7 @@ export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
 };
 
 const PullRequests: FC<{
-  pullRequests: PullRequestData;
+  pullRequests: PullRequestsQuery[];
   query: Record<string, string>;
 }> = ({ pullRequests, query }) => (
   <Top>
@@ -98,12 +98,12 @@ const PullRequests: FC<{
           </tr>
         </thead>
         <tbody>
-          {pullRequests.map((pr: unknown) => (
+          {pullRequests.map((pr) => (
             <tr>
               <td>
                 {pr.status !== "active" ? "✅" : ""} {pr.title}
                 <sup>
-                  <abbr title={pr.pullRequestId}>#</abbr>
+                  <abbr title={String(pr.pullRequestId)}>#</abbr>
                 </sup>
               </td>
               <td>{new Date(pr.closedDate).toDateString()}</td>

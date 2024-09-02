@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import type { FC, PropsWithChildren } from "hono/jsx";
 import { Database } from "bun:sqlite";
 import { serveStatic } from "hono/bun";
 import dayjs from "dayjs";
@@ -28,7 +27,28 @@ const Home = () => (
 
 const app = new Hono();
 
-const selectPullRequests = db.query(`
+export interface PullRequestsQuery {
+  status: string;
+  pullRequestId: number;
+  title: string;
+  createdBy_uniqueName: string;
+  creationDate: string;
+  closedDate: string;
+  branch: string;
+  repository_name: string;
+  reviewsCount: number;
+  calculated_businessDuration: number;
+}
+
+const selectPullRequests = db.query<
+  PullRequestsQuery,
+  {
+    $limit: number;
+    $status: string;
+    $bump: string;
+    $sourceRefName: string;
+  }
+>(`
 SELECT
   status,
   pr.pullRequestId,
@@ -51,7 +71,15 @@ ORDER BY calculated_businessDuration DESC
 LIMIT $limit;
 `);
 
-const selectReviews = db.query(`
+export interface ReviewsQuery {
+  displayName: string;
+  tnumber: string;
+  pullRequestId: number;
+  title: string;
+  reviews: number;
+}
+
+const selectReviews = db.query<ReviewsQuery, {}>(`
 SELECT r.displayName, cr.pullRequestId, pr.title, pr.repository_name, 
   COUNT(r.displayName) as reviews, 
   substr(r.uniqueName, 0, instr(r.uniqueName, '@')) as tnumber
@@ -87,7 +115,7 @@ app
     return c.html(<PullRequests pullRequests={json} query={query} />);
   })
   .get("/reviews", async (c) => {
-    const json = selectReviews.all();
+    const json = selectReviews.all({});
     return c.html(<Reviews reviews={json} />);
   });
 
