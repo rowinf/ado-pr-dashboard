@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime.js";
 import PullRequests, { Top } from "./PullRequests.tsx";
 import Reviews from "./Reviews.tsx";
-import { getPullRequests } from "./PullRequestsQuery.ts";
+import { countPullRequests, getPullRequests } from "./PullRequestsQuery.ts";
 import { getReviews } from "./ReviewsQuery.ts";
 
 dayjs.extend(relativeTime);
@@ -42,14 +42,31 @@ app
     return c.html(<Home />);
   })
   .get("/pullrequests", async (c) => {
+    const perPage = 20.0;
     const query = c.req.query();
+    const currentPage = Number(query.page ?? 1);
     const json = getPullRequests.all({
-      $limit: 105,
+      $limit: 20,
       $status: query.status || "completed",
       $bump: query.mute_noise === "on" ? "%bump%" : "",
       $sourceRefName: query.mute_noise === "on" ? `%${query.tnumber}%` : "%%",
+      $tnumber: query.tnumber ?? "",
+      $offset: (currentPage - 1) * perPage,
     });
-    return c.html(<PullRequests pullRequests={json} query={query} />);
+    const total = countPullRequests.get({});
+    let pageCount = Math.ceil((1.0 * (total?.count ?? 0)) / perPage);
+    const nextPage = currentPage < pageCount ? currentPage + 1 : 0;
+    const prevPage = currentPage > 0 ? currentPage - 1 : 0;
+    return c.html(
+      <PullRequests
+        pullRequests={json}
+        nextPage={nextPage}
+        prevPage={prevPage}
+        currentPage={currentPage}
+        pageCount={pageCount}
+        query={query}
+      />
+    );
   })
   .get("/reviews", async (c) => {
     const json = getReviews.all({});

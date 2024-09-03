@@ -1,27 +1,30 @@
 import { db } from "./db.ts";
 
 export interface PullRequestsQuery {
-    status: string;
-    pullRequestId: number;
-    title: string;
-    createdBy_uniqueName: string;
-    creationDate: string;
-    closedDate: string;
-    branch: string;
-    repository_name: string;
-    reviewsCount: number;
-    calculated_businessDuration: number;
+  status: string;
+  pullRequestId: number;
+  title: string;
+  createdBy_uniqueName: string;
+  creationDate: string;
+  closedDate: string;
+  branch: string;
+  repository_name: string;
+  reviewsCount: number;
+  calculated_businessDuration: number;
+  count: number;
+}
+
+export const getPullRequests = db.query<
+  PullRequestsQuery,
+  {
+    $limit: number;
+    $status: string;
+    $bump: string;
+    $sourceRefName: string;
+    $tnumber: string;
+    $offset: number;
   }
-  
-  export const getPullRequests = db.query<
-    PullRequestsQuery,
-    {
-      $limit: number;
-      $status: string;
-      $bump: string;
-      $sourceRefName: string;
-    }
-  >(`
+>(`
   SELECT
     status,
     pr.pullRequestId,
@@ -35,12 +38,21 @@ export interface PullRequestsQuery {
     calculated_businessDuration,
     COUNT(cr.reviewerId) as reviewsCount,
     repository_name,
-    substr(sourceRefName, 12) as branch
+    substr(sourceRefName, 12) as branch,
+    COUNT(*) as count
   FROM pull_requests as pr
   JOIN code_reviews as cr ON pr.pullRequestId = cr.pullRequestId
   WHERE status = $status AND (sourceRefName LIKE $sourceRefName) AND NOT (title LIKE $bump)
   GROUP BY pr.pullRequestId
   ORDER BY calculated_businessDuration DESC
-  LIMIT $limit;
-  `);
-  
+  LIMIT $limit
+  OFFSET $offset;
+`);
+
+interface CountPullRequests {
+  count: number;
+}
+
+export const countPullRequests = db.query<CountPullRequests, {}>(`
+  SELECT COUNT(*) as count FROM pull_requests;
+`);

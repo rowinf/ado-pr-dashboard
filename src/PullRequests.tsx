@@ -25,7 +25,7 @@ export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
             </li>
           </ul>
         </header>
-        <main class="padding-bloc-start">{props.children}</main>
+        <main class="padding-block-end">{props.children}</main>
       </body>
     </html>
   );
@@ -34,7 +34,11 @@ export const Top: FC<PropsWithChildren<{ class?: string }>> = (props) => {
 const PullRequests: FC<{
   pullRequests: PullRequestsQuery[];
   query: Record<string, string>;
-}> = ({ pullRequests, query }) => (
+  nextPage: number;
+  prevPage: number;
+  currentPage: number;
+  pageCount: number;
+}> = ({ pullRequests, query, nextPage, prevPage, currentPage, pageCount }) => (
   <Top>
     <h1>Pull Requests</h1>
     <div>
@@ -46,8 +50,8 @@ const PullRequests: FC<{
         action="/pullrequests"
         hx-get="/pullrequests"
         hx-trigger="submit"
-        hx-select="table"
-        hx-target="table"
+        hx-select="#table"
+        hx-target="#table"
         hx-swap="outerHTML"
       >
         <section class="tool-bar margin-block">
@@ -84,37 +88,98 @@ const PullRequests: FC<{
           <button type="submit">Filter</button>
         </section>
       </form>
-      <table>
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Closed</th>
-            <th>
-              <abbr title="business hours taken to complete the PR">Hours</abbr>
-            </th>
-            <th>Reviews</th>
-            <th>repository_name</th>
-            <th>branch</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pullRequests.map((pr) => (
+      <div id="table">
+        <table>
+          <thead>
             <tr>
-              <td>
-                {pr.status !== "active" ? "✅" : ""} {pr.title}
-                <sup>
-                  <abbr title={String(pr.pullRequestId)}>#</abbr>
-                </sup>
-              </td>
-              <td>{new Date(pr.closedDate).toDateString()}</td>
-              <td>{pr.calculated_businessDuration}</td>
-              <td>{pr.reviewsCount}</td>
-              <td>{pr.repository_name}</td>
-              <td>{pr.branch}</td>
+              <th>Title</th>
+              <th>Closed</th>
+              <th>
+                <abbr title="business hours taken to complete the PR">
+                  Hours
+                </abbr>
+              </th>
+              <th>Reviews</th>
+              <th>repository_name</th>
+              <th>branch</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {pullRequests.map((pr) => (
+              <tr>
+                <td>
+                  {pr.status !== "active" ? "✅" : ""} {pr.title}
+                  <sup>
+                    <abbr title={String(pr.pullRequestId)}>#</abbr>
+                  </sup>
+                </td>
+                <td>{new Date(pr.closedDate).toDateString()}</td>
+                <td>{pr.calculated_businessDuration}</td>
+                <td>{pr.reviewsCount}</td>
+                <td>{pr.repository_name}</td>
+                <td>{pr.branch}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div class="toolbar">
+          {prevPage > 1 ? (
+            <button
+              hx-get={`/pullrequests?page=${1}`}
+              hx-trigger="click"
+              hx-select="#table"
+              hx-target="#table"
+              hx-swap="outerHTML"
+              type="button"
+              disabled={currentPage == 1}
+            >
+              first
+            </button>
+          ) : null}
+
+          {prevPage > 0 ? (
+            <button
+              hx-get={`/pullrequests?page=${prevPage}`}
+              hx-trigger="click"
+              hx-select="#table"
+              hx-target="#table"
+              hx-swap="outerHTML"
+              type="button"
+              disabled={!prevPage}
+            >
+              {prevPage}
+            </button>
+          ) : null}
+
+          <button type="button" disabled>
+            {currentPage}
+          </button>
+          {nextPage > currentPage ? (
+            <button
+              hx-get={`/pullrequests?page=${nextPage}`}
+              hx-trigger="click"
+              hx-select="#table"
+              hx-target="#table"
+              hx-swap="outerHTML"
+              type="button"
+              disabled={!nextPage}
+            >
+              {nextPage}
+            </button>
+          ) : null}
+          <button
+            hx-get={`/pullrequests?page=${pageCount}`}
+            hx-trigger="click"
+            hx-select="#table"
+            hx-target="#table"
+            hx-swap="outerHTML"
+            type="button"
+            disabled={currentPage == pageCount}
+          >
+            last
+          </button>
+        </div>
+      </div>
     </div>
   </Top>
 );
