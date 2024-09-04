@@ -1,5 +1,5 @@
 {
-  "name": "hono-htmx",
+  "name": "ado-pr-dashboard",
   "type": "module",
   "scripts": {
     "dev": "bun run --hot src/index.tsx",
