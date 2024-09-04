@@ -38,12 +38,16 @@ const PullRequests: FC<{
   prevPage: number;
   currentPage: number;
   pageCount: number;
-}> = ({ pullRequests, query, nextPage, prevPage, currentPage, pageCount }) => (
+}> = ({
+  pullRequests,
+  query,
+  nextPage,
+  prevPage,
+  currentPage,
+  pageCount,
+}) => (
   <Top>
     <h1>Pull Requests</h1>
-    <div>
-      <p>{pullRequests[0]?.createdBy_uniqueName}</p>
-    </div>
     <div>
       <form
         method="GET"
@@ -56,12 +60,12 @@ const PullRequests: FC<{
       >
         <section class="tool-bar margin-block">
           <label>
-            T-Number
+            Branch
             <input
               type="text"
-              name="tnumber"
-              placeholder="t-number"
-              value={query["tnumber"]}
+              name="branch"
+              placeholder="branch"
+              value={query["branch"]}
             />
           </label>
           <label>
@@ -122,7 +126,7 @@ const PullRequests: FC<{
             ))}
           </tbody>
         </table>
-        <div class="toolbar">
+        <div class="toolbar" hx-vals={JSON.stringify(query)}>
           {prevPage > 1 ? (
             <button
               hx-get={`/pullrequests?page=${1}`}
@@ -154,7 +158,7 @@ const PullRequests: FC<{
           <button type="button" disabled>
             {currentPage}
           </button>
-          {nextPage > currentPage ? (
+          {nextPage > currentPage && nextPage < pageCount ? (
             <button
               hx-get={`/pullrequests?page=${nextPage}`}
               hx-trigger="click"

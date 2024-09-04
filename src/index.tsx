@@ -42,19 +42,22 @@ app
     return c.html(<Home />);
   })
   .get("/pullrequests", async (c) => {
-    const perPage = 20.0;
+    const perPage = 20;
     const query = c.req.query();
     const currentPage = Number(query.page ?? 1);
-    const json = getPullRequests.all({
-      $limit: 20,
+    const where = {
       $status: query.status || "completed",
       $bump: query.mute_noise === "on" ? "%bump%" : "",
-      $sourceRefName: query.mute_noise === "on" ? `%${query.tnumber}%` : "%%",
-      $tnumber: query.tnumber ?? "",
+      $branch: `%${query.branch ?? ""}%`,
+    };
+    const json = getPullRequests.all({
+      $limit: perPage,
       $offset: (currentPage - 1) * perPage,
+      ...where,
     });
-    const total = countPullRequests.get({});
-    let pageCount = Math.ceil((1.0 * (total?.count ?? 0)) / perPage);
+    const total = countPullRequests.get(where);
+
+    const pageCount = Math.ceil((1.0 * (total?.count ?? 0)) / perPage);
     const nextPage = currentPage < pageCount ? currentPage + 1 : 0;
     const prevPage = currentPage > 0 ? currentPage - 1 : 0;
     return c.html(
@@ -64,7 +67,11 @@ app
         prevPage={prevPage}
         currentPage={currentPage}
         pageCount={pageCount}
-        query={query}
+        query={{
+          status: query.status,
+          mute_noise: query.mute_noise,
+          branch: query.branch,
+        }}
       />
     );
   })

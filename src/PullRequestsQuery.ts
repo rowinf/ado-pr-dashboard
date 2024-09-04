@@ -14,15 +14,18 @@ export interface PullRequestsQuery {
   count: number;
 }
 
+const whereFragment = `
+(status = $status) AND (branch LIKE $branch) AND NOT (title LIKE $bump)
+`;
+
 export const getPullRequests = db.query<
   PullRequestsQuery,
   {
     $limit: number;
+    $offset: number;
     $status: string;
     $bump: string;
-    $sourceRefName: string;
-    $tnumber: string;
-    $offset: number;
+    $branch: string;
   }
 >(`
   SELECT
@@ -42,7 +45,7 @@ export const getPullRequests = db.query<
     COUNT(*) as count
   FROM pull_requests as pr
   JOIN code_reviews as cr ON pr.pullRequestId = cr.pullRequestId
-  WHERE status = $status AND (sourceRefName LIKE $sourceRefName) AND NOT (title LIKE $bump)
+  WHERE (status = $status) AND (branch LIKE $branch) AND NOT (title LIKE $bump)
   GROUP BY pr.pullRequestId
   ORDER BY calculated_businessDuration DESC
   LIMIT $limit
@@ -53,6 +56,15 @@ interface CountPullRequests {
   count: number;
 }
 
-export const countPullRequests = db.query<CountPullRequests, {}>(`
-  SELECT COUNT(*) as count FROM pull_requests;
+export const countPullRequests = db.query<
+  CountPullRequests,
+  {
+    $status: string;
+    $bump: string;
+    $branch: string;
+  }
+>(`
+  SELECT COUNT(*) as count, substr(sourceRefName, 12) as branch
+  FROM pull_requests
+  WHERE (status = $status) AND (branch LIKE $branch) AND NOT (title LIKE $bump);
 `);
