@@ -1,11 +1,26 @@
-To install dependencies:
+# PR Dashboard
+Show data related to pull requests
+
+## Steps to run
+
+### Install dependencies:
+
 ```sh
 bun install
 ```
 
-To run:
+### Build the database:
+
+Get the azure cli with devops extension and run this in the command line:
 ```sh
-bun run dev
+$ az login --allow-no-subscriptions
+$ fetch-prs.fish
 ```
 
-open http://localhost:3000
+### Run
+```sh
+$ bun run dev
+```
+
+### Open in browser
+open http://localhost:4000
