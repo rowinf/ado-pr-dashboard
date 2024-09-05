@@ -24,3 +24,18 @@ $ bun run dev
 
 ### Open in browser
 open http://localhost:4000
+
+### System Diagram
+```mermaid
+flowchart
+  Az-DevOps <-- "az repos pr list" --> Az-CLI
+  subgraph Bun
+	 Hono  <-- "queries" --> db[(SQLite)]
+  	Az-CLI -- "json" --> ado((Script))
+  	ado((Script)) -- "Insert" --> db[(SQLite)]
+	end
+  subgraph Browser
+   Hono <-- "ajax" --> HTML
+  	htmx -- "attributes" --> HTML
+  end
+```
